@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MindAR Image Tracking Demo</title>
+    
+    <!-- MindAR + A-Frame Libraries -->
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        /* Loading/Instructions Overlay */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        
+        #overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            color: #888;
+            margin-bottom: 2rem;
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 320px;
+            text-align: center;
+        }
+        
+        .instructions h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+        
+        .instructions p {
+            font-size: 0.9rem;
+            color: #aaa;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+        
+        .target-preview {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 1.5rem;
+            border: 2px dashed rgba(0, 212, 255, 0.5);
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 212, 255, 0.05);
+        }
+        
+        .target-preview img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 8px;
+        }
+        
+        .start-btn {
+            background: linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%);
+            border: none;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .start-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.3);
+        }
+        
+        .start-btn:active {
+            transform: scale(0.98);
+        }
+        
+        /* Status indicator */
+        #status {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            z-index: 100;
+            display: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        #status.scanning {
+            display: block;
+            color: #00d4ff;
+        }
+        
+        #status.found {
+            display: block;
+            color: #10b981;
+        }
+        
+        /* Download target button */
+        #download-target {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            z-index: 100;
+            display: none;
+            transition: background 0.2s ease;
+        }
+        
+        #download-target:hover {
+            background: rgba(0, 212, 255, 0.2);
+        }
+        
+        /* A-Frame scene container */
+        .a-scene-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Hide A-Frame UI elements */
+        .a-enter-vr {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Instructions Overlay -->
+    <div id="overlay">
+        <div class="logo">MindAR Demo</div>
+        <div class="subtitle">Image Tracking for iOS & Android</div>
+        
+        <div class="instructions">
+            <h2>How It Works</h2>
+            <p>Point your camera at the target image below. A 3D model will appear anchored to the image!</p>
+            
+            <div class="target-preview">
+                <img src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.png" alt="Target Image">
+            </div>
+            
+            <p style="font-size: 0.8rem; color: #666;">
+                💡 Tip: Open this image on another device or print it out, then scan it with your phone.
+            </p>
+            
+            <button class="start-btn" onclick="startAR()">Start AR Experience</button>
+        </div>
+    </div>
+    
+    <!-- Status Indicator -->
+    <div id="status">Scanning for target...</div>
+    
+    <!-- Download Target Button -->
+    <button id="download-target" onclick="downloadTarget()">📷 Get Target Image</button>
+    
+    <!-- A-Frame AR Scene -->
+    <a-scene
+        id="ar-scene"
+        mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind; autoStart: false; uiLoading: no; uiScanning: no; uiError: no;"
+        color-space="sRGB"
+        renderer="colorManagement: true, physicallyCorrectLights: true"
+        vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false"
+        embedded
+        class="a-scene-container"
+        style="display: none;">
+        
+        <!-- Assets -->
+        <a-assets>
+            <!-- Using a sample GLTF model from MindAR examples -->
+            <a-asset-item id="model" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/softmind/scene.gltf"></a-asset-item>
+        </a-assets>
+        
+        <!-- Camera -->
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+        
+        <!-- Image Target with 3D Content -->
+        <a-entity mindar-image-target="targetIndex: 0">
+            <!-- 3D Model that appears on the target -->
+            <a-gltf-model 
+                src="#model"
+                position="0 0 0.1"
+                scale="0.5 0.5 0.5"
+                rotation="0 0 0"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear">
+            </a-gltf-model>
+            
+            <!-- Optional: Add a glowing ring effect around the model -->
+            <a-ring 
+                color="#00d4ff"
+                inner-radius="0.3"
+                outer-radius="0.35"
+                position="0 0 0"
+                rotation="-90 0 0"
+                opacity="0.7"
+                animation="property: scale; from: 0.8 0.8 0.8; to: 1.2 1.2 1.2; loop: true; dur: 1500; easing: easeInOutSine; dir: alternate">
+            </a-ring>
+        </a-entity>
+    </a-scene>
+    
+    <script>
+        let arStarted = false;
+        
+        function startAR() {
+            const overlay = document.getElementById('overlay');
+            const scene = document.getElementById('ar-scene');
+            const status = document.getElementById('status');
+            const downloadBtn = document.getElementById('download-target');
+            
+            // Hide overlay
+            overlay.classList.add('hidden');
+            
+            // Show scene
+            scene.style.display = 'block';
+            
+            // Show status and download button
+            status.classList.add('scanning');
+            downloadBtn.style.display = 'block';
+            
+            // Start MindAR
+            const sceneEl = document.querySelector('a-scene');
+            const arSystem = sceneEl.systems['mindar-image-system'];
+            
+            // Wait for scene to be ready
+            if (sceneEl.hasLoaded) {
+                initAR(arSystem);
+            } else {
+                sceneEl.addEventListener('loaded', () => initAR(arSystem));
+            }
+        }
+        
+        function initAR(arSystem) {
+            arSystem.start();
+            arStarted = true;
+            
+            // Listen for target found/lost events
+            const target = document.querySelector('[mindar-image-target]');
+            
+            target.addEventListener('targetFound', () => {
+                console.log('Target found!');
+                const status = document.getElementById('status');
+                status.textContent = '✓ Target found!';
+                status.classList.remove('scanning');
+                status.classList.add('found');
+            });
+            
+            target.addEventListener('targetLost', () => {
+                console.log('Target lost');
+                const status = document.getElementById('status');
+                status.textContent = 'Scanning for target...';
+                status.classList.remove('found');
+                status.classList.add('scanning');
+            });
+        }
+        
+        function downloadTarget() {
+            // Open target image in new tab for download
+            window.open('https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.png', '_blank');
+        }
+        
+        // Handle page visibility changes (pause/resume AR)
+        document.addEventListener('visibilitychange', () => {
+            if (!arStarted) return;
+            
+            const sceneEl = document.querySelector('a-scene');
+            const arSystem = sceneEl.systems['mindar-image-system'];
+            
+            if (document.hidden) {
+                arSystem.pause(true);
+            } else {
+                arSystem.unpause();
+            }
+        });
+    </script>
+</body>
+</html>
