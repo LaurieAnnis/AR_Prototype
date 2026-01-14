@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Wild Birds AR - Trading Card Demo</title>
+    
+    <!-- MindAR + A-Frame + Three.js -->
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background: #0d1117;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        /* ========================================
+           SPLASH / INSTRUCTIONS SCREEN
+           ======================================== */
+        #splash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #1a3a2a 0%, #0d1117 50%, #0d1117 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            z-index: 1000;
+            padding: 2rem 1.5rem;
+            overflow-y: auto;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+        
+        #splash.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        
+        /* Decorative bird silhouettes */
+        .bird-decoration {
+            position: absolute;
+            font-size: 4rem;
+            opacity: 0.1;
+        }
+        .bird-1 { top: 10%; left: 10%; transform: rotate(-15deg); }
+        .bird-2 { top: 15%; right: 15%; transform: rotate(20deg) scaleX(-1); }
+        .bird-3 { bottom: 20%; left: 5%; transform: rotate(10deg); }
+        
+        .brand {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .brand-logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            color: #4ade80;
+            margin-bottom: 0.25rem;
+        }
+        
+        .brand-tagline {
+            font-size: 0.85rem;
+            color: #6b7280;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+        
+        .card-showcase {
+            position: relative;
+            width: 200px;
+            height: 280px;
+            margin: 1rem 0 1.5rem;
+            perspective: 1000px;
+        }
+        
+        .card-frame {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(145deg, #2d5a4a 0%, #1a3a2a 100%);
+            border-radius: 16px;
+            padding: 8px;
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(74, 222, 128, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            animation: cardFloat 4s ease-in-out infinite;
+        }
+        
+        @keyframes cardFloat {
+            0%, 100% { transform: translateY(0) rotateY(-5deg); }
+            50% { transform: translateY(-10px) rotateY(5deg); }
+        }
+        
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .card-month {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: #166534;
+            margin-bottom: 0.5rem;
+        }
+        
+        .card-bird-icon {
+            font-size: 3.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .card-bird-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.1rem;
+            color: #14532d;
+            margin-bottom: 0.25rem;
+        }
+        
+        .card-rarity {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .star {
+            width: 12px;
+            height: 12px;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        }
+        
+        .card-fact {
+            font-size: 0.7rem;
+            color: #4b5563;
+            line-height: 1.4;
+            font-style: italic;
+        }
+        
+        .instructions-panel {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(74, 222, 128, 0.15);
+            border-radius: 20px;
+            padding: 1.5rem;
+            max-width: 340px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        
+        .instructions-panel h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            color: #4ade80;
+            margin-bottom: 1rem;
+        }
+        
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            text-align: left;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .step:last-of-type {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .step-number {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #0d1117;
+            flex-shrink: 0;
+        }
+        
+        .step-text {
+            font-size: 0.9rem;
+            color: #9ca3af;
+            line-height: 1.5;
+        }
+        
+        .step-text strong {
+            color: #fff;
+        }
+        
+        .btn-start {
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            border: none;
+            color: #0d1117;
+            font-family: 'Source Sans 3', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(74, 222, 128, 0.3);
+        }
+        
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(74, 222, 128, 0.4);
+        }
+        
+        .btn-start:active {
+            transform: translateY(0);
+        }
+        
+        /* ========================================
+           AR EXPERIENCE UI
+           ======================================== */
+        #ar-ui {
+            display: none;
+        }
+        
+        #ar-ui.active {
+            display: block;
+        }
+        
+        .ar-status {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(13, 17, 23, 0.85);
+            backdrop-filter: blur(12px);
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            z-index: 100;
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fbbf24;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        
+        .ar-status.found .status-dot {
+            background: #4ade80;
+            animation: none;
+        }
+        
+        .ar-status.found .status-text {
+            color: #4ade80;
+        }
+        
+        .ar-bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(0deg, rgba(13, 17, 23, 0.95) 0%, transparent 100%);
+            padding: 2rem 1.5rem 1.5rem;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            z-index: 100;
+        }
+        
+        .ar-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            font-family: 'Source Sans 3', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 0.75rem 1.25rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .ar-btn:hover {
+            background: rgba(74, 222, 128, 0.2);
+            border-color: rgba(74, 222, 128, 0.4);
+        }
+        
+        /* ========================================
+           COLLECTION POPUP
+           ======================================== */
+        #collection-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(13, 17, 23, 0.95);
+            backdrop-filter: blur(20px);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+        
+        #collection-popup.active {
+            display: flex;
+        }
+        
+        .popup-content {
+            background: linear-gradient(145deg, #1a3a2a 0%, #0d1117 100%);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            border-radius: 24px;
+            padding: 2rem;
+            text-align: center;
+            max-width: 320px;
+            animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        .popup-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .popup-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            color: #4ade80;
+            margin-bottom: 0.5rem;
+        }
+        
+        .popup-subtitle {
+            font-size: 0.9rem;
+            color: #9ca3af;
+            margin-bottom: 1.5rem;
+        }
+        
+        .popup-stats {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .popup-close {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #9ca3af;
+            font-family: 'Source Sans 3', sans-serif;
+            font-size: 0.85rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .popup-close:hover {
+            border-color: #4ade80;
+            color: #4ade80;
+        }
+        
+        /* ========================================
+           A-FRAME SCENE
+           ======================================== */
+        #ar-scene {
+            display: none;
+        }
+        
+        #ar-scene.active {
+            display: block;
+        }
+        
+        .a-enter-vr {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Decorative elements -->
+    <div class="bird-decoration bird-1">🦅</div>
+    <div class="bird-decoration bird-2">🦉</div>
+    <div class="bird-decoration bird-3">🐦</div>
+    
+    <!-- ========================================
+         SPLASH SCREEN
+         ======================================== -->
+    <div id="splash">
+        <div class="brand">
+            <div class="brand-logo">Wild Birds</div>
+            <div class="brand-tagline">AR Trading Cards</div>
+        </div>
+        
+        <!-- Animated Card Preview -->
+        <div class="card-showcase">
+            <div class="card-frame">
+                <div class="card-inner">
+                    <div class="card-month">January 2026</div>
+                    <div class="card-bird-icon">🦅</div>
+                    <div class="card-bird-name">Red-tailed Hawk</div>
+                    <div class="card-rarity">
+                        <div class="star"></div>
+                        <div class="star"></div>
+                        <div class="star"></div>
+                    </div>
+                    <div class="card-fact">"Can spot a mouse from 100 feet in the air"</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Instructions -->
+        <div class="instructions-panel">
+            <h2>Collect AR Birds!</h2>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-text">
+                    <strong>Find a card</strong> in-store or scan the demo target below
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-text">
+                    <strong>Point your camera</strong> at the card to reveal the AR bird
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-text">
+                    <strong>Collect all 12</strong> monthly cards to complete your collection!
+                </div>
+            </div>
+            
+            <button class="btn-start" onclick="startExperience()">
+                Start AR Experience
+            </button>
+        </div>
+    </div>
+    
+    <!-- ========================================
+         AR UI OVERLAY
+         ======================================== -->
+    <div id="ar-ui">
+        <div class="ar-status" id="ar-status">
+            <div class="status-dot"></div>
+            <span class="status-text">Scanning for card...</span>
+        </div>
+        
+        <div class="ar-bottom-bar">
+            <button class="ar-btn" onclick="showCollection()">
+                📚 Collection
+            </button>
+            <button class="ar-btn" onclick="openTargetImage()">
+                📷 Get Demo Card
+            </button>
+            <button class="ar-btn" onclick="exitAR()">
+                ✕ Exit
+            </button>
+        </div>
+    </div>
+    
+    <!-- ========================================
+         COLLECTION POPUP
+         ======================================== -->
+    <div id="collection-popup">
+        <div class="popup-content">
+            <div class="popup-icon">🎉</div>
+            <div class="popup-title">Card Collected!</div>
+            <div class="popup-subtitle">You found this month's bird!</div>
+            
+            <div class="popup-stats">
+                <div class="stat">
+                    <div class="stat-value">1</div>
+                    <div class="stat-label">Cards Found</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">11</div>
+                    <div class="stat-label">Remaining</div>
+                </div>
+            </div>
+            
+            <button class="popup-close" onclick="closePopup()">Continue Scanning</button>
+        </div>
+    </div>
+    
+    <!-- ========================================
+         A-FRAME AR SCENE
+         ======================================== -->
+    <a-scene
+        id="ar-scene"
+        mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind; autoStart: false; uiLoading: no; uiScanning: no; uiError: no;"
+        color-space="sRGB"
+        renderer="colorManagement: true, physicallyCorrectLights: true"
+        vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false"
+        embedded>
+        
+        <a-assets>
+            <a-asset-item id="bird-model" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/softmind/scene.gltf"></a-asset-item>
+        </a-assets>
+        
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+        
+        <a-entity mindar-image-target="targetIndex: 0" id="target">
+            <!-- 3D Bird Model -->
+            <a-gltf-model 
+                id="bird-3d"
+                src="#bird-model"
+                position="0 0.1 0.15"
+                scale="0.4 0.4 0.4"
+                rotation="0 0 0"
+                animation="property: position; from: 0 0.1 0.15; to: 0 0.2 0.15; dur: 2000; easing: easeInOutSine; dir: alternate; loop: true"
+                animation__rotate="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true">
+            </a-gltf-model>
+            
+            <!-- Particle ring effect -->
+            <a-ring 
+                color="#4ade80"
+                inner-radius="0.35"
+                outer-radius="0.4"
+                position="0 0 0.01"
+                rotation="-90 0 0"
+                opacity="0.5"
+                animation="property: scale; from: 0.9 0.9 0.9; to: 1.1 1.1 1.1; dur: 1200; easing: easeInOutSine; dir: alternate; loop: true"
+                animation__opacity="property: opacity; from: 0.3; to: 0.7; dur: 1200; easing: easeInOutSine; dir: alternate; loop: true">
+            </a-ring>
+            
+            <!-- Outer glow ring -->
+            <a-ring 
+                color="#22c55e"
+                inner-radius="0.42"
+                outer-radius="0.45"
+                position="0 0 0"
+                rotation="-90 0 0"
+                opacity="0.3"
+                animation="property: scale; from: 1.0 1.0 1.0; to: 1.3 1.3 1.3; dur: 1500; easing: easeInOutSine; dir: alternate; loop: true">
+            </a-ring>
+            
+            <!-- Info text above model -->
+            <a-entity
+                position="0 0.45 0.1"
+                text="value: Red-tailed Hawk; align: center; color: #4ade80; width: 1.5"
+                scale="0.8 0.8 0.8">
+            </a-entity>
+        </a-entity>
+    </a-scene>
+    
+    <script>
+        // State management
+        let arStarted = false;
+        let cardCollected = false;
+        
+        function startExperience() {
+            const splash = document.getElementById('splash');
+            const scene = document.getElementById('ar-scene');
+            const arUI = document.getElementById('ar-ui');
+            
+            // Hide splash, show AR
+            splash.classList.add('hidden');
+            scene.classList.add('active');
+            arUI.classList.add('active');
+            
+            // Initialize MindAR
+            const sceneEl = document.querySelector('a-scene');
+            
+            if (sceneEl.hasLoaded) {
+                initializeAR();
+            } else {
+                sceneEl.addEventListener('loaded', initializeAR);
+            }
+        }
+        
+        function initializeAR() {
+            const sceneEl = document.querySelector('a-scene');
+            const arSystem = sceneEl.systems['mindar-image-system'];
+            
+            arSystem.start();
+            arStarted = true;
+            
+            // Set up target tracking events
+            const target = document.querySelector('#target');
+            const status = document.getElementById('ar-status');
+            
+            target.addEventListener('targetFound', () => {
+                console.log('Card detected!');
+                status.classList.add('found');
+                status.querySelector('.status-text').textContent = '✓ Card detected!';
+                
+                // Show collection popup after first detection
+                if (!cardCollected) {
+                    setTimeout(() => {
+                        showCollectionPopup();
+                        cardCollected = true;
+                    }, 2000);
+                }
+            });
+            
+            target.addEventListener('targetLost', () => {
+                console.log('Card lost');
+                status.classList.remove('found');
+                status.querySelector('.status-text').textContent = 'Scanning for card...';
+            });
+        }
+        
+        function showCollection() {
+            alert('Collection feature coming soon!\n\nIn the full version, this would show:\n• All 12 monthly cards\n• Your collected birds\n• Rarity stats\n• Sharing options');
+        }
+        
+        function showCollectionPopup() {
+            document.getElementById('collection-popup').classList.add('active');
+        }
+        
+        function closePopup() {
+            document.getElementById('collection-popup').classList.remove('active');
+        }
+        
+        function openTargetImage() {
+            window.open('https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.png', '_blank');
+        }
+        
+        function exitAR() {
+            if (arStarted) {
+                const sceneEl = document.querySelector('a-scene');
+                const arSystem = sceneEl.systems['mindar-image-system'];
+                arSystem.stop();
+                arStarted = false;
+            }
+            
+            // Show splash again
+            document.getElementById('splash').classList.remove('hidden');
+            document.getElementById('ar-scene').classList.remove('active');
+            document.getElementById('ar-ui').classList.remove('active');
+        }
+        
+        // Handle visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (!arStarted) return;
+            
+            const sceneEl = document.querySelector('a-scene');
+            const arSystem = sceneEl.systems['mindar-image-system'];
+            
+            if (document.hidden) {
+                arSystem.pause(true);
+            } else {
+                arSystem.unpause();
+            }
+        });
+    </script>
+</body>
+</html>
